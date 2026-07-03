@@ -37,6 +37,7 @@ func (s *stringOrSlice) UnmarshalYAML(value *yaml.Node) error {
 }
 
 type Step struct {
+	ID               string            `yaml:"id"`
 	Name             string            `yaml:"name"`
 	Run              string            `yaml:"run"`
 	Uses             string            `yaml:"uses"`

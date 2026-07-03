@@ -44,7 +44,7 @@ func loadEnv() {
 
 func Run(workflowPath string) error {
 	loadEnv()
-	secrets := loadSecrets()
+	evalCtx := newEvalContext(loadSecrets())
 	path, err := findWorkflow(workflowPath)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func Run(workflowPath string) error {
 			}
 		}
 
-		err := runJob(ctx, jobID, job, secrets)
+		err := runJob(ctx, jobID, job, evalCtx)
 		if err != nil {
 			anyJobFailed = true
 			jobPassed[jobID] = false
@@ -97,7 +97,7 @@ func Run(workflowPath string) error {
 	return nil
 }
 
-func runJob(ctx context.Context, jobID string, job Job, secrets map[string]string) error {
+func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext) error {
 	if job.Image != "" {
 		fmt.Printf("\n  ┌─ Job: %s (image: %s)\n\n", jobID, job.Image)
 	} else {
@@ -114,7 +114,7 @@ func runJob(ctx context.Context, jobID string, job Job, secrets map[string]strin
 	state := newJobState()
 
 	for i, step := range job.Steps {
-		step = expandStep(step, secrets)
+		step = expandStep(step, evalCtx)
 		name := stepName(step, i)
 
 		// Evaluate if: condition — auto-skip if false.
@@ -177,7 +177,7 @@ func runJob(ctx context.Context, jobID string, job Job, secrets map[string]strin
 			continue
 		}
 
-		result := runStep(ctr, i+1, name, step)
+		result := runStep(ctr, i+1, name, step, evalCtx)
 		results = append(results, result)
 
 		if !result.passed && !result.skipped {
@@ -203,7 +203,7 @@ func runJob(ctx context.Context, jobID string, job Job, secrets map[string]strin
 	return nil
 }
 
-func runStep(ctr *Container, num int, name string, step Step) stepResult {
+func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalContext) stepResult {
 	for {
 		action := pause(num, name, step.Run)
 
@@ -233,6 +233,7 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 			}
 
 			if exitCode == 0 {
+				parseStepOutputs(output, step.ID, evalCtx)
 				printStepResult(name, true, false)
 				return stepResult{name: name, passed: true}
 			}
@@ -260,6 +261,7 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 						fmt.Printf("  Exec error: %v\n", err)
 						printStepResult(name, false, false)
 					} else if exitCode == 0 {
+						parseStepOutputs(output, step.ID, evalCtx)
 						printStepResult(name, true, false)
 						return stepResult{name: name, passed: true}
 					} else {

@@ -23,7 +23,12 @@ func newJobState() jobState {
 
 // detectGitRef runs `git rev-parse --abbrev-ref HEAD` in the working directory.
 func detectGitRef() string {
-	out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+	return runGitCmd("rev-parse", "--abbrev-ref", "HEAD")
+}
+
+// runGitCmd runs a git command and returns trimmed stdout, or "" on error.
+func runGitCmd(args ...string) string {
+	out, err := exec.Command("git", args...).Output()
 	if err != nil {
 		return ""
 	}

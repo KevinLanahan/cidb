@@ -52,6 +52,33 @@ func pause(stepNum int, stepName string, command string) Action {
 	}
 }
 
+func pauseFailed(stepNum int, stepName string) Action {
+	fmt.Println()
+	fmt.Println("  ─────────────────────────────────────────────────")
+	fmt.Printf("  Step %d: %s (failed — what next?)\n", stepNum, stepName)
+	fmt.Println("  ─────────────────────────────────────────────────")
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		fmt.Print("  [r]etry  [sh]ell  [s]kip  [a]bort  > ")
+		if !scanner.Scan() {
+			return ActionAbort
+		}
+		switch strings.TrimSpace(strings.ToLower(scanner.Text())) {
+		case "r", "retry":
+			return ActionRetry
+		case "sh", "shell":
+			return ActionShell
+		case "s", "skip", "c", "continue":
+			return ActionSkip
+		case "a", "abort", "q", "quit":
+			return ActionAbort
+		default:
+			fmt.Println("  Unknown command. Options: r, sh, s, a")
+		}
+	}
+}
+
 func printStepResult(name string, passed, skipped bool) {
 	switch {
 	case skipped:

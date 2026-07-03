@@ -197,15 +197,37 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 			}
 
 			for {
-				action = pause(num, name+" (failed — what next?)", "")
+				action = pauseFailed(num, name)
 				switch action {
+				case ActionRetry:
+					fmt.Println()
+					exitCode, output, err = ctr.exec(step.Run, step.Env)
+					fmt.Println()
+					if err != nil {
+						fmt.Printf("  Exec error: %v\n", err)
+						printStepResult(name, false, false)
+					} else if exitCode == 0 {
+						printStepResult(name, true, false)
+						return stepResult{name: name, passed: true}
+					} else {
+						fmt.Printf("  Step exited with code %d\n", exitCode)
+						printStepResult(name, false, false)
+						if analysis := analyzeFailure(step.Run, output, exitCode); analysis != "" {
+							fmt.Println()
+							fmt.Println("  ┌─ AI Analysis ──────────────────────────────────")
+							for _, line := range strings.Split(analysis, "\n") {
+								fmt.Printf("  │ %s\n", line)
+							}
+							fmt.Println("  └────────────────────────────────────────────────")
+						}
+					}
 				case ActionShell:
 					if err := ctr.dropShell(); err != nil {
 						fmt.Printf("\n  Shell error: %v\n", err)
 					}
 				case ActionAbort:
 					return stepResult{name: name, aborted: true}
-				case ActionContinue, ActionSkip:
+				case ActionSkip:
 					return stepResult{name: name, passed: false}
 				}
 			}

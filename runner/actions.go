@@ -25,6 +25,9 @@ func runAction(ctr *Container, step Step) (handled bool, err error) {
 	case action == "actions/setup-node":
 		return true, setupNode(ctr, step.With)
 
+	case action == "actions/setup-java":
+		return true, setupJava(ctr, step.With)
+
 	default:
 		return false, nil
 	}
@@ -54,6 +57,35 @@ pip3 --version
 	}
 	if exitCode != 0 {
 		return fmt.Errorf("setup-python exited with code %d", exitCode)
+	}
+	return nil
+}
+
+func setupJava(ctr *Container, with map[string]string) error {
+	version := with["java-version"]
+	if version == "" {
+		version = "17"
+	}
+	version = strings.TrimLeft(version, "~^>=")
+
+	fmt.Printf("  (actions/setup-java — installing Java %s in container)\n", version)
+
+	script := fmt.Sprintf(`
+set -e
+apt-get update -qq
+apt-get install -y -qq wget apt-transport-https > /dev/null 2>&1
+apt-get install -y -qq openjdk-%s-jdk > /dev/null 2>&1
+apt-get install -y -qq maven > /dev/null 2>&1
+java -version
+mvn -version
+`, version)
+
+	exitCode, _, err := ctr.exec(script, nil)
+	if err != nil {
+		return fmt.Errorf("setup-java: %w", err)
+	}
+	if exitCode != 0 {
+		return fmt.Errorf("setup-java exited with code %d", exitCode)
 	}
 	return nil
 }

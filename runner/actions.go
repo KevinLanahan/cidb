@@ -11,9 +11,14 @@ func runAction(ctr *Container, step Step) (handled bool, err error) {
 	action := strings.Split(step.Uses, "@")[0]
 
 	switch {
-	case action == "actions/checkout":
+	case action == "actions/checkout", action == "circleci/checkout":
 		// Workspace is already mounted at /workspace — nothing to do.
-		fmt.Println("  (actions/checkout — workspace already mounted at /workspace)")
+		fmt.Println("  (checkout — workspace already mounted at /workspace)")
+		return true, nil
+
+	// CircleCI built-ins we silently skip (caching, artifacts, etc.)
+	case strings.HasPrefix(action, "circleci/"):
+		fmt.Printf("  (circleci built-in %q — skipped)\n", action)
 		return true, nil
 
 	case action == "actions/setup-go":

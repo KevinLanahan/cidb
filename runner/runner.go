@@ -50,7 +50,7 @@ func Run(workflowPath string) error {
 		return err
 	}
 
-	wf, err := parseWorkflow(path)
+	wf, err := parseAnyWorkflow(path)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,8 @@ func Run(workflowPath string) error {
 
 	ctx := context.Background()
 
-	for jobID, job := range wf.Jobs {
+	for _, jobID := range wf.JobOrder {
+		job := wf.Jobs[jobID]
 		if err := runJob(ctx, jobID, job, secrets); err != nil {
 			return err
 		}
@@ -71,19 +72,36 @@ func Run(workflowPath string) error {
 }
 
 func runJob(ctx context.Context, jobID string, job Job, secrets map[string]string) error {
-	fmt.Printf("\n  ┌─ Job: %s (runs-on: %s)\n\n", jobID, job.RunsOn)
+	if job.Image != "" {
+		fmt.Printf("\n  ┌─ Job: %s (image: %s)\n\n", jobID, job.Image)
+	} else {
+		fmt.Printf("\n  ┌─ Job: %s (runs-on: %s)\n\n", jobID, job.RunsOn)
+	}
 
-	ctr, err := startContainer(ctx, job.RunsOn)
+	ctr, err := startContainer(ctx, job)
 	if err != nil {
 		return err
 	}
 	defer ctr.stop()
 
 	var results []stepResult
+	state := newJobState()
 
 	for i, step := range job.Steps {
 		step = expandStep(step, secrets)
 		name := stepName(step, i)
+
+		// Evaluate if: condition — auto-skip if false.
+		if !evalIf(step.If, state) {
+			reason := "if: condition false"
+			if step.If == "" {
+				reason = "previous step failed"
+			}
+			fmt.Printf("\n  ─── Step %d: %s\n", i+1, name)
+			fmt.Printf("  ⏭  SKIP  %s (%s)\n", name, reason)
+			results = append(results, stepResult{name: name, skipped: true})
+			continue
+		}
 
 		if step.Uses != "" && step.Run == "" {
 			fmt.Printf("\n  ─── Step %d: %s\n", i+1, name)
@@ -91,6 +109,7 @@ func runJob(ctx context.Context, jobID string, job Job, secrets map[string]strin
 			if err != nil {
 				fmt.Printf("  ✗  FAIL  %s (%v)\n", name, err)
 				results = append(results, stepResult{name: name, passed: false})
+				state.anyFailed = true
 				printSummary(results)
 				return fmt.Errorf("job %q stopped: action %q failed", jobID, name)
 			}
@@ -135,6 +154,10 @@ func runJob(ctx context.Context, jobID string, job Job, secrets map[string]strin
 		result := runStep(ctr, i+1, name, step)
 		results = append(results, result)
 
+		if !result.passed && !result.skipped {
+			state.anyFailed = true
+		}
+
 		if result.aborted {
 			fmt.Println("\n  Aborted.")
 			printSummary(results)
@@ -142,12 +165,15 @@ func runJob(ctx context.Context, jobID string, job Job, secrets map[string]strin
 		}
 
 		if !result.passed && !result.skipped {
-			printSummary(results)
-			return fmt.Errorf("job %q stopped: step %q failed", jobID, name)
+			// Don't stop the job — let subsequent steps with if: failure() or if: always() still run.
+			continue
 		}
 	}
 
 	printSummary(results)
+	if state.anyFailed {
+		return fmt.Errorf("job %q finished with failures", jobID)
+	}
 	return nil
 }
 
@@ -229,7 +255,8 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 				case ActionAbort:
 					return stepResult{name: name, aborted: true}
 				case ActionSkip:
-					return stepResult{name: name, passed: false}
+					printStepResult(name, false, true)
+					return stepResult{name: name, skipped: true}
 				}
 			}
 		}

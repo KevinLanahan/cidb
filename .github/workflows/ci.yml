@@ -36,3 +36,11 @@ jobs:
         run: go build -o cidb .
         env:
           CGO_ENABLED: "0"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Build failed — check the steps above"
+
+      - name: Always log completion
+        if: always()
+        run: echo "Pipeline finished"

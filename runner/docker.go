@@ -28,16 +28,21 @@ type Container struct {
 	ctx context.Context
 }
 
-func startContainer(ctx context.Context, runsOn string) (*Container, error) {
+func startContainer(ctx context.Context, job Job) (*Container, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("connecting to Docker: %w\nIs Docker running?", err)
 	}
 
-	image, ok := imageMap[runsOn]
-	if !ok {
-		fmt.Printf("  ⚠  No image mapping for %q — falling back to ubuntu:22.04\n", runsOn)
-		image = "ubuntu:22.04"
+	// Explicit image (e.g. from GitLab CI image: field) takes priority.
+	image := job.Image
+	if image == "" {
+		var ok bool
+		image, ok = imageMap[job.RunsOn]
+		if !ok {
+			fmt.Printf("  ⚠  No image mapping for %q — falling back to ubuntu:22.04\n", job.RunsOn)
+			image = "ubuntu:22.04"
+		}
 	}
 
 	fmt.Printf("  Pulling image %s (this may take a minute the first time)...\n", image)

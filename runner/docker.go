@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -74,7 +75,7 @@ func startContainer(ctx context.Context, runsOn string) (*Container, error) {
 	return &Container{cli: cli, id: resp.ID, ctx: ctx}, nil
 }
 
-func (c *Container) exec(command string, env map[string]string) (int, error) {
+func (c *Container) exec(command string, env map[string]string) (int, string, error) {
 	var envSlice []string
 	for k, v := range env {
 		envSlice = append(envSlice, k+"="+v)
@@ -88,22 +89,23 @@ func (c *Container) exec(command string, env map[string]string) (int, error) {
 		WorkingDir:   "/workspace",
 	})
 	if err != nil {
-		return -1, fmt.Errorf("creating exec: %w", err)
+		return -1, "", fmt.Errorf("creating exec: %w", err)
 	}
 
 	attach, err := c.cli.ContainerExecAttach(c.ctx, execResp.ID, types.ExecStartCheck{})
 	if err != nil {
-		return -1, fmt.Errorf("attaching to exec: %w", err)
+		return -1, "", fmt.Errorf("attaching to exec: %w", err)
 	}
 	defer attach.Close()
 
-	stdcopy.StdCopy(os.Stdout, os.Stderr, attach.Reader)
+	var buf bytes.Buffer
+	stdcopy.StdCopy(io.MultiWriter(os.Stdout, &buf), io.MultiWriter(os.Stderr, &buf), attach.Reader)
 
 	inspect, err := c.cli.ContainerExecInspect(c.ctx, execResp.ID)
 	if err != nil {
-		return -1, err
+		return -1, "", err
 	}
-	return inspect.ExitCode, nil
+	return inspect.ExitCode, buf.String(), nil
 }
 
 func (c *Container) dropShell() error {

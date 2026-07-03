@@ -19,9 +19,40 @@ func runAction(ctr *Container, step Step) (handled bool, err error) {
 	case action == "actions/setup-go":
 		return true, setupGo(ctr, step.With)
 
+	case action == "actions/setup-python":
+		return true, setupPython(ctr, step.With)
+
 	default:
 		return false, nil
 	}
+}
+
+func setupPython(ctr *Container, with map[string]string) error {
+	version := with["python-version"]
+	if version == "" {
+		version = "3"
+	}
+	version = strings.TrimLeft(version, "~^>=")
+
+	fmt.Printf("  (actions/setup-python — installing Python %s in container)\n", version)
+
+	script := `
+set -e
+apt-get update -qq
+apt-get install -y -qq python3 python3-pip > /dev/null 2>&1
+ln -sf /usr/bin/python3 /usr/local/bin/python
+python --version
+pip3 --version
+`
+
+	exitCode, _, err := ctr.exec(script, nil)
+	if err != nil {
+		return fmt.Errorf("setup-python: %w", err)
+	}
+	if exitCode != 0 {
+		return fmt.Errorf("setup-python exited with code %d", exitCode)
+	}
+	return nil
 }
 
 func setupGo(ctr *Container, with map[string]string) error {
@@ -50,7 +81,7 @@ ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 go version
 `, version)
 
-	exitCode, err := ctr.exec(script, nil)
+	exitCode, _, err := ctr.exec(script, nil)
 	if err != nil {
 		return fmt.Errorf("setup-go: %w", err)
 	}

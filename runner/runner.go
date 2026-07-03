@@ -1,8 +1,11 @@
 package runner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"strings"
 )
 
 type stepResult struct {
@@ -12,7 +15,36 @@ type stepResult struct {
 	aborted bool 
 }
 
+func loadEnv() {
+	// Try current directory first, then the directory of the running binary
+	paths := []string{".env"}
+	if exe, err := os.Executable(); err == nil {
+		paths = append(paths, strings.TrimSuffix(exe, "/cidb")+"/.env")
+	}
+
+	for _, p := range paths {
+		f, err := os.Open(p)
+		if err != nil {
+			continue
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				os.Setenv(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+			}
+		}
+		return
+	}
+}
+
 func Run(workflowPath string) error {
+	loadEnv()
 	path, err := findWorkflow(workflowPath)
 	if err != nil {
 		return err
@@ -111,7 +143,7 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 
 		case ActionContinue:
 			fmt.Println()
-			exitCode, err := ctr.exec(step.Run, step.Env)
+			exitCode, output, err := ctr.exec(step.Run, step.Env)
 			fmt.Println()
 
 			if err != nil {
@@ -127,6 +159,15 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 
 			fmt.Printf("  Step exited with code %d\n", exitCode)
 			printStepResult(name, false, false)
+
+			if analysis := analyzeFailure(step.Run, output, exitCode); analysis != "" {
+				fmt.Println()
+				fmt.Println("  ┌─ AI Analysis ──────────────────────────────────")
+				for _, line := range strings.Split(analysis, "\n") {
+					fmt.Printf("  │ %s\n", line)
+				}
+				fmt.Println("  └────────────────────────────────────────────────")
+			}
 
 			for {
 				action = pause(num, name+" (failed — what next?)", "")

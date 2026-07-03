@@ -12,11 +12,10 @@ type stepResult struct {
 	name    string
 	passed  bool
 	skipped bool
-	aborted bool 
+	aborted bool
 }
 
 func loadEnv() {
-	// Try current directory first, then the directory of the running binary
 	paths := []string{".env"}
 	if exe, err := os.Executable(); err == nil {
 		paths = append(paths, strings.TrimSuffix(exe, "/cidb")+"/.env")
@@ -45,6 +44,7 @@ func loadEnv() {
 
 func Run(workflowPath string) error {
 	loadEnv()
+	secrets := loadSecrets()
 	path, err := findWorkflow(workflowPath)
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func Run(workflowPath string) error {
 	ctx := context.Background()
 
 	for jobID, job := range wf.Jobs {
-		if err := runJob(ctx, jobID, job); err != nil {
+		if err := runJob(ctx, jobID, job, secrets); err != nil {
 			return err
 		}
 	}
@@ -70,7 +70,7 @@ func Run(workflowPath string) error {
 	return nil
 }
 
-func runJob(ctx context.Context, jobID string, job Job) error {
+func runJob(ctx context.Context, jobID string, job Job, secrets map[string]string) error {
 	fmt.Printf("\n  ┌─ Job: %s (runs-on: %s)\n\n", jobID, job.RunsOn)
 
 	ctr, err := startContainer(ctx, job.RunsOn)
@@ -82,6 +82,7 @@ func runJob(ctx context.Context, jobID string, job Job) error {
 	var results []stepResult
 
 	for i, step := range job.Steps {
+		step = expandStep(step, secrets)
 		name := stepName(step, i)
 
 		if step.Uses != "" && step.Run == "" {

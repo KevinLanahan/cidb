@@ -170,7 +170,7 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 
 		case ActionContinue:
 			fmt.Println()
-			exitCode, output, err := ctr.exec(step.Run, step.Env)
+			exitCode, output, err := ctr.exec(step.Run, step.Env, step.WorkingDirectory)
 			fmt.Println()
 
 			if err != nil {
@@ -201,7 +201,7 @@ func runStep(ctr *Container, num int, name string, step Step) stepResult {
 				switch action {
 				case ActionRetry:
 					fmt.Println()
-					exitCode, output, err = ctr.exec(step.Run, step.Env)
+					exitCode, output, err = ctr.exec(step.Run, step.Env, step.WorkingDirectory)
 					fmt.Println()
 					if err != nil {
 						fmt.Printf("  Exec error: %v\n", err)

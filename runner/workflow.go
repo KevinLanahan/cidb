@@ -19,11 +19,12 @@ type Job struct {
 }
 
 type Step struct {
-	Name string            `yaml:"name"`
-	Run  string            `yaml:"run"`
-	Uses string            `yaml:"uses"`
-	Env  map[string]string `yaml:"env"`
-	With map[string]string `yaml:"with"`
+	Name             string            `yaml:"name"`
+	Run              string            `yaml:"run"`
+	Uses             string            `yaml:"uses"`
+	Env              map[string]string `yaml:"env"`
+	With             map[string]string `yaml:"with"`
+	WorkingDirectory string            `yaml:"working-directory"`
 }
 
 func findWorkflow(path string) (string, error) {

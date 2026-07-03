@@ -22,6 +22,9 @@ func runAction(ctr *Container, step Step) (handled bool, err error) {
 	case action == "actions/setup-python":
 		return true, setupPython(ctr, step.With)
 
+	case action == "actions/setup-node":
+		return true, setupNode(ctr, step.With)
+
 	default:
 		return false, nil
 	}
@@ -51,6 +54,37 @@ pip3 --version
 	}
 	if exitCode != 0 {
 		return fmt.Errorf("setup-python exited with code %d", exitCode)
+	}
+	return nil
+}
+
+func setupNode(ctr *Container, with map[string]string) error {
+	version := with["node-version"]
+	if version == "" {
+		version = "20"
+	}
+	version = strings.TrimLeft(version, "~^>=v")
+	// Only keep major version for nvm install
+	major := strings.Split(version, ".")[0]
+
+	fmt.Printf("  (actions/setup-node — installing Node.js %s in container)\n", major)
+
+	script := fmt.Sprintf(`
+set -e
+apt-get update -qq
+apt-get install -y -qq curl > /dev/null 2>&1
+curl -fsSL https://deb.nodesource.com/setup_%s.x | bash - > /dev/null 2>&1
+apt-get install -y -qq nodejs > /dev/null 2>&1
+node --version
+npm --version
+`, major)
+
+	exitCode, _, err := ctr.exec(script, nil)
+	if err != nil {
+		return fmt.Errorf("setup-node: %w", err)
+	}
+	if exitCode != 0 {
+		return fmt.Errorf("setup-node exited with code %d", exitCode)
 	}
 	return nil
 }

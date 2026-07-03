@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -75,10 +76,19 @@ func startContainer(ctx context.Context, runsOn string) (*Container, error) {
 	return &Container{cli: cli, id: resp.ID, ctx: ctx}, nil
 }
 
-func (c *Container) exec(command string, env map[string]string) (int, string, error) {
+func (c *Container) exec(command string, env map[string]string, workingDir ...string) (int, string, error) {
 	var envSlice []string
 	for k, v := range env {
 		envSlice = append(envSlice, k+"="+v)
+	}
+
+	wd := "/workspace"
+	if len(workingDir) > 0 && workingDir[0] != "" {
+		if strings.HasPrefix(workingDir[0], "/") {
+			wd = workingDir[0]
+		} else {
+			wd = "/workspace/" + workingDir[0]
+		}
 	}
 
 	execResp, err := c.cli.ContainerExecCreate(c.ctx, c.id, types.ExecConfig{
@@ -86,7 +96,7 @@ func (c *Container) exec(command string, env map[string]string) (int, string, er
 		Env:          envSlice,
 		AttachStdout: true,
 		AttachStderr: true,
-		WorkingDir:   "/workspace",
+		WorkingDir:   wd,
 	})
 	if err != nil {
 		return -1, "", fmt.Errorf("creating exec: %w", err)

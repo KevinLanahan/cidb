@@ -44,6 +44,7 @@ type Step struct {
 	Uses             string            `yaml:"uses"`
 	If               string            `yaml:"if"`
 	ContinueOnError  bool              `yaml:"continue-on-error"`
+	TimeoutMinutes   float64           `yaml:"timeout-minutes"`
 	Env              map[string]string `yaml:"env"`
 	With             map[string]string `yaml:"with"`
 	WorkingDirectory string            `yaml:"working-directory"`

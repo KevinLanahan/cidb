@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -81,18 +82,18 @@ func startContainer(ctx context.Context, job Job) (*Container, error) {
 	return &Container{cli: cli, id: resp.ID, ctx: ctx}, nil
 }
 
-func (c *Container) exec(command string, env map[string]string, workingDir ...string) (int, string, error) {
+func (c *Container) exec(command string, env map[string]string, workingDir string, timeout time.Duration) (int, string, error) {
 	var envSlice []string
 	for k, v := range env {
 		envSlice = append(envSlice, k+"="+v)
 	}
 
 	wd := "/workspace"
-	if len(workingDir) > 0 && workingDir[0] != "" {
-		if strings.HasPrefix(workingDir[0], "/") {
-			wd = workingDir[0]
+	if workingDir != "" {
+		if strings.HasPrefix(workingDir, "/") {
+			wd = workingDir
 		} else {
-			wd = "/workspace/" + workingDir[0]
+			wd = "/workspace/" + workingDir
 		}
 	}
 
@@ -114,7 +115,23 @@ func (c *Container) exec(command string, env map[string]string, workingDir ...st
 	defer attach.Close()
 
 	var buf bytes.Buffer
-	stdcopy.StdCopy(io.MultiWriter(os.Stdout, &buf), io.MultiWriter(os.Stderr, &buf), attach.Reader)
+	done := make(chan error, 1)
+	go func() {
+		_, err := stdcopy.StdCopy(io.MultiWriter(os.Stdout, &buf), io.MultiWriter(os.Stderr, &buf), attach.Reader)
+		done <- err
+	}()
+
+	if timeout > 0 {
+		select {
+		case <-done:
+			// finished normally
+		case <-time.After(timeout):
+			attach.Close()
+			return -1, buf.String(), fmt.Errorf("step timed out after %v", timeout)
+		}
+	} else {
+		<-done
+	}
 
 	inspect, err := c.cli.ContainerExecInspect(c.ctx, execResp.ID)
 	if err != nil {

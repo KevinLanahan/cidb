@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type stepResult struct {
@@ -233,8 +234,12 @@ func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalConte
 			continue
 
 		case ActionContinue:
+			var timeout time.Duration
+			if step.TimeoutMinutes > 0 {
+				timeout = time.Duration(step.TimeoutMinutes * float64(time.Minute))
+			}
 			fmt.Println()
-			exitCode, output, err := ctr.exec(step.Run, step.Env, step.WorkingDirectory)
+			exitCode, output, err := ctr.exec(step.Run, step.Env, step.WorkingDirectory, timeout)
 			fmt.Println()
 
 			if err != nil {
@@ -273,7 +278,7 @@ func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalConte
 				switch action {
 				case ActionRetry:
 					fmt.Println()
-					exitCode, output, err = ctr.exec(step.Run, step.Env, step.WorkingDirectory)
+					exitCode, output, err = ctr.exec(step.Run, step.Env, step.WorkingDirectory, timeout)
 					fmt.Println()
 					if err != nil {
 						fmt.Printf("  Exec error: %v\n", err)

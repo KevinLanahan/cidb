@@ -113,7 +113,7 @@ func downloadArtifact(ctr *Container, with map[string]string) error {
 	}
 
 	// Ensure dest dir exists in container
-	ctr.exec("mkdir -p "+containerDest, nil) //nolint:errcheck
+	ctr.exec("mkdir -p "+containerDest, nil, "", 0) //nolint:errcheck
 
 	cmd := exec.Command("docker", "cp", srcDir+"/.", ctr.id+":"+containerDest)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -142,7 +142,7 @@ python --version
 pip3 --version
 `
 
-	exitCode, _, err := ctr.exec(script, nil)
+	exitCode, _, err := ctr.exec(script, nil, "", 0)
 	if err != nil {
 		return fmt.Errorf("setup-python: %w", err)
 	}
@@ -171,7 +171,7 @@ java -version
 mvn -version
 `, version)
 
-	exitCode, _, err := ctr.exec(script, nil)
+	exitCode, _, err := ctr.exec(script, nil, "", 0)
 	if err != nil {
 		return fmt.Errorf("setup-java: %w", err)
 	}
@@ -202,7 +202,7 @@ node --version
 npm --version
 `, major)
 
-	exitCode, _, err := ctr.exec(script, nil)
+	exitCode, _, err := ctr.exec(script, nil, "", 0)
 	if err != nil {
 		return fmt.Errorf("setup-node: %w", err)
 	}
@@ -238,7 +238,7 @@ ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 go version
 `, version)
 
-	exitCode, _, err := ctr.exec(script, nil)
+	exitCode, _, err := ctr.exec(script, nil, "", 0)
 	if err != nil {
 		return fmt.Errorf("setup-go: %w", err)
 	}

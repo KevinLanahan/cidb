@@ -118,8 +118,7 @@ func Run(workflowPath string) error {
 					fmt.Printf("failed: %v\n", err)
 				} else {
 					fmt.Printf("done!\n")
-					fmt.Printf("  Session ID: %s\n", slug)
-					fmt.Printf("  (web viewer coming soon — share this ID with your team)\n")
+					fmt.Printf("  https://lokal-kappa.vercel.app/s/%s\n", slug)
 				}
 			}
 		}

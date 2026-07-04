@@ -91,21 +91,31 @@ func printStepResult(name string, passed, skipped bool) {
 }
 
 func printSummary(results []stepResult) {
-	var passed, failed, skipped int
+	var passed, failed, skipped, warned int
 
 	fmt.Println()
 	fmt.Println("  ─── Summary ────────────────────────────────────")
 	for _, r := range results {
-		printStepResult(r.name, r.passed, r.skipped)
 		switch {
 		case r.skipped:
+			fmt.Printf("  ⏭  SKIP  %s\n", r.name)
 			skipped++
+		case r.warned:
+			fmt.Printf("  ⚠  WARN  %s\n", r.name)
+			warned++
 		case r.passed:
+			fmt.Printf("  ✓  PASS  %s\n", r.name)
 			passed++
 		default:
+			fmt.Printf("  ✗  FAIL  %s\n", r.name)
 			failed++
 		}
 	}
 	fmt.Println("  ─────────────────────────────────────────────────")
-	fmt.Printf("  %d passed  %d failed  %d skipped\n\n", passed, failed, skipped)
+	line := fmt.Sprintf("  %d passed  %d failed  %d skipped", passed, failed, skipped)
+	if warned > 0 {
+		line += fmt.Sprintf("  %d warned", warned)
+	}
+	fmt.Println(line)
+	fmt.Println()
 }

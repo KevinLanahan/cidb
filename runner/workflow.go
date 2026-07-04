@@ -17,6 +17,7 @@ type Workflow struct {
 type Job struct {
 	RunsOn string        `yaml:"runs-on"`
 	Image  string        // explicit Docker image override (e.g. GitLab CI image: field)
+	If     string        `yaml:"if"`
 	Needs  stringOrSlice `yaml:"needs"`
 	Steps  []Step        `yaml:"steps"`
 }
@@ -42,6 +43,7 @@ type Step struct {
 	Run              string            `yaml:"run"`
 	Uses             string            `yaml:"uses"`
 	If               string            `yaml:"if"`
+	ContinueOnError  bool              `yaml:"continue-on-error"`
 	Env              map[string]string `yaml:"env"`
 	With             map[string]string `yaml:"with"`
 	WorkingDirectory string            `yaml:"working-directory"`

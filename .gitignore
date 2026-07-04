@@ -12,3 +12,6 @@ vendor/
 
 # Environment variables
 .env
+
+# Private roadmap
+ROADMAP.md

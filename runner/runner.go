@@ -12,6 +12,7 @@ type stepResult struct {
 	name    string
 	passed  bool
 	skipped bool
+	warned  bool // failed but continue-on-error: true
 	aborted bool
 }
 
@@ -78,6 +79,16 @@ func Run(workflowPath string) error {
 			}
 			if !allPassed {
 				fmt.Printf("\n  ─── Job: %s (skipped — dependency failed)\n", jobID)
+				continue
+			}
+		}
+
+		// Evaluate job-level if: condition.
+		if job.If != "" {
+			jobState := newJobState()
+			expanded := evalCtx.expand(job.If)
+			if !evalIf(expanded, jobState) {
+				fmt.Printf("\n  ─── Job: %s (skipped — if: condition false)\n", jobID)
 				continue
 			}
 		}
@@ -180,7 +191,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext) er
 		result := runStep(ctr, i+1, name, step, evalCtx)
 		results = append(results, result)
 
-		if !result.passed && !result.skipped {
+		if !result.passed && !result.skipped && !result.warned {
 			state.anyFailed = true
 		}
 
@@ -190,7 +201,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext) er
 			return nil
 		}
 
-		if !result.passed && !result.skipped {
+		if !result.passed && !result.skipped && !result.warned {
 			// Don't stop the job — let subsequent steps with if: failure() or if: always() still run.
 			continue
 		}
@@ -239,6 +250,13 @@ func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalConte
 			}
 
 			fmt.Printf("  Step exited with code %d\n", exitCode)
+
+			// continue-on-error: true — log the failure but let the job continue.
+			if step.ContinueOnError {
+				fmt.Printf("  ⚠  WARN  %s (failed but continue-on-error is set)\n", name)
+				return stepResult{name: name, warned: true}
+			}
+
 			printStepResult(name, false, false)
 
 			if analysis := analyzeFailure(step.Run, output, exitCode); analysis != "" {

@@ -61,7 +61,7 @@ func evalIf(expr string, state jobState) bool {
 	case "always()":
 		return true
 	case "cancelled()":
-		return false // cidb never cancels
+		return false // lokal never cancels
 	case "!cancelled()":
 		return true
 	case "success() || failure()", "failure() || success()":

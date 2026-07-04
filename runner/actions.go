@@ -45,11 +45,11 @@ func runAction(ctr *Container, step Step) (handled bool, err error) {
 		fmt.Printf("  (actions/cache — skipped locally, key: %s)\n", key)
 		return true, nil
 
-	// Upload artifact — copy files out of the container to ./cidb-artifacts/
+	// Upload artifact — copy files out of the container to ./lokal-artifacts/
 	case action == "actions/upload-artifact":
 		return true, uploadArtifact(ctr, step.With)
 
-	// Download artifact — copy files from ./cidb-artifacts/ into the container
+	// Download artifact — copy files from ./lokal-artifacts/ into the container
 	case action == "actions/download-artifact":
 		return true, downloadArtifact(ctr, step.With)
 
@@ -75,7 +75,7 @@ func uploadArtifact(ctr *Container, with map[string]string) error {
 		srcPath = "/workspace/" + srcPath
 	}
 
-	destDir := filepath.Join("cidb-artifacts", name)
+	destDir := filepath.Join("lokal-artifacts", name)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("upload-artifact: creating output dir: %w", err)
 	}
@@ -85,7 +85,7 @@ func uploadArtifact(ctr *Container, with map[string]string) error {
 		return fmt.Errorf("upload-artifact: %s", strings.TrimSpace(string(out)))
 	}
 
-	fmt.Printf("  (actions/upload-artifact — saved %q to ./cidb-artifacts/%s/)\n", path, name)
+	fmt.Printf("  (actions/upload-artifact — saved %q to ./lokal-artifacts/%s/)\n", path, name)
 	return nil
 }
 
@@ -100,7 +100,7 @@ func downloadArtifact(ctr *Container, with map[string]string) error {
 		return nil
 	}
 
-	srcDir := filepath.Join("cidb-artifacts", name)
+	srcDir := filepath.Join("lokal-artifacts", name)
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		fmt.Printf("  (actions/download-artifact — no local artifact %q found, skipping)\n", name)
 		return nil

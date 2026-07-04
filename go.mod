@@ -1,4 +1,4 @@
-module github.com/KevinLanahan/cidb
+module github.com/KevinLanahan/lokal
 
 go 1.25.0
 

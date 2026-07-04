@@ -1,8 +1,8 @@
-# cidb
+# lokal
 
-A step-through debugger for GitHub Actions pipelines.
+A step-through debugger for CI pipelines (GitHub Actions, GitLab CI, and CircleCI).
 
-Instead of commit → push → wait → fail → repeat, `cidb` runs your workflow locally in Docker and pauses before each step — so you can inspect the environment, skip steps, drop into a live shell, and debug in real time.
+Instead of commit → push → wait → fail → repeat, `lokal` runs your workflow locally in Docker and pauses before each step — so you can inspect the environment, skip steps, drop into a live shell, and debug in real time.
 
 ## Requirements
 
@@ -12,21 +12,21 @@ Instead of commit → push → wait → fail → repeat, `cidb` runs your workfl
 ## Install
 
 ```bash
-git clone https://github.com/KevinLanahan/cidb.git
-cd cidb
-go build -o cidb .
+git clone https://github.com/KevinLanahan/lokal.git
+cd lokal
+go build -o lokal .
 ```
 
 ## Usage
 
 Run a specific workflow file:
 ```bash
-./cidb run .github/workflows/ci.yml
+./lokal run .github/workflows/ci.yml
 ```
 
-Or let cidb auto-discover a workflow in the current directory:
+Or let lokal auto-discover a workflow in the current directory:
 ```bash
-./cidb run
+./lokal run
 ```
 
 ## Controls
@@ -40,8 +40,21 @@ At each step pause prompt:
 | `sh` | Drop into a shell inside the container |
 | `a` | Abort the run |
 
-If a step fails, cidb pauses again and lets you drop into a shell to inspect the environment before deciding what to do next.
+If a step fails, lokal pauses again and lets you drop into a shell to inspect the environment before deciding what to do next.
 
-## Status
+## Supported CI Platforms
 
-Early v1 — supports `run:` steps only. `uses:` steps (e.g. `actions/checkout`) are skipped with a notice. Secrets, matrix builds, and expression syntax coming later.
+- **GitHub Actions** (`.github/workflows/*.yml`)
+- **GitLab CI** (`.gitlab-ci.yml`)
+- **CircleCI** (`.circleci/config.yml`)
+
+## Features
+
+- Step-through debugging with pause/continue/skip/retry
+- Live shell inside the running container at any step
+- `if:` conditionals at job and step level
+- `needs:` job dependency ordering
+- `${{ }}` expression evaluation
+- `continue-on-error:` and `timeout-minutes:` support
+- AI-powered failure analysis (via Claude)
+- `actions/cache`, `actions/upload-artifact`, `actions/download-artifact` support

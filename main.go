@@ -1,6 +1,6 @@
 package main
 
-import "github.com/KevinLanahan/cidb/cmd"
+import "github.com/KevinLanahan/lokal/cmd"
 
 func main() {
 	cmd.Execute()

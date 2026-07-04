@@ -142,7 +142,7 @@ func (c *Container) exec(command string, env map[string]string, workingDir strin
 
 func (c *Container) dropShell() error {
 	fmt.Println("\n  Dropping into container shell. Your project is at /workspace.")
-	fmt.Println("  Type 'exit' to return to cidb.")
+	fmt.Println("  Type 'exit' to return to lokal.")
 
 	cmd := exec.Command("docker", "exec", "-it", c.id, "/bin/bash")
 	cmd.Stdin = os.Stdin

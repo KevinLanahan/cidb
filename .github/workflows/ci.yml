@@ -33,6 +33,6 @@ jobs:
           CGO_ENABLED: "0"
 
       - name: Build
-        run: go build -o cidb .
+        run: go build -o lokal .
         env:
           CGO_ENABLED: "0"

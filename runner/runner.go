@@ -20,7 +20,7 @@ type stepResult struct {
 func loadEnv() {
 	paths := []string{".env"}
 	if exe, err := os.Executable(); err == nil {
-		paths = append(paths, strings.TrimSuffix(exe, "/cidb")+"/.env")
+		paths = append(paths, strings.TrimSuffix(exe, "/lokal")+"/.env")
 	}
 
 	for _, p := range paths {
@@ -57,7 +57,7 @@ func Run(workflowPath string) error {
 		return err
 	}
 
-	fmt.Printf("\n  cidb  ·  %s\n", wf.Name)
+	fmt.Printf("\n  lokal  ·  %s\n", wf.Name)
 	fmt.Printf("  Workflow: %s\n", path)
 	fmt.Printf("  Jobs: %d\n", len(wf.Jobs))
 

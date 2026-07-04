@@ -1,6 +1,6 @@
-# This is a sample GitHub Actions workflow file for testing cidb.
+# This is a sample GitHub Actions workflow file for testing lokal.
 # To use it:
-#   cidb run testdata/ci.yml
+#   lokal run testdata/ci.yml
 #
 # It has a mix of shell steps so you can see the pause/continue/shell flow in action.
 
@@ -20,7 +20,7 @@ jobs:
 
       - name: Set up a file
         run: |
-          echo "hello from cidb" > /workspace/hello.txt
+          echo "hello from lokal" > /workspace/hello.txt
           cat /workspace/hello.txt
 
       - name: Run a multi-line script

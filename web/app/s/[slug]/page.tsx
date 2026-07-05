@@ -86,6 +86,7 @@ export default function SessionPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [notFound, setNotFound] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const missesRef = useRef(0);
 
   async function fetchSession() {
     const { data, error } = await supabase
@@ -95,10 +96,13 @@ export default function SessionPage() {
       .single();
 
     if (error || !data) {
-      setNotFound(true);
+      missesRef.current += 1;
+      // Only give up after 5 consecutive misses (~12 seconds) to handle timing/network blips.
+      if (missesRef.current >= 5) setNotFound(true);
       return;
     }
 
+    missesRef.current = 0;
     setSession(data as Session);
 
     // Stop polling once the session is done.

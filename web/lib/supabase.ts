@@ -9,6 +9,7 @@ export type Step = {
   name: string;
   status: "passed" | "failed" | "skipped" | "warned" | "aborted" | "pending" | "running";
   output?: string;
+  analysis?: string;
 };
 
 export type Session = {

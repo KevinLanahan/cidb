@@ -40,6 +40,20 @@ function StatusBadge({ status }: { status: Step["status"] }) {
   );
 }
 
+function StepAnalysis({ analysis }: { analysis: string }) {
+  return (
+    <div
+      className="px-4 py-3 text-xs"
+      style={{ borderTop: "1px solid #d2992240", background: "#1e1a0e" }}
+    >
+      <div className="flex items-center gap-1.5 mb-2 font-medium" style={{ color: "#d29922" }}>
+        ✦ AI Analysis
+      </div>
+      <p style={{ color: "#e6edf3", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{analysis}</p>
+    </div>
+  );
+}
+
 function StepOutput({ output, status }: { output: string; status: Step["status"] }) {
   const borderColor = status === "failed" ? "#f8514940" : status === "warned" ? "#d2992240" : "#30363d";
   return (
@@ -225,6 +239,9 @@ export default function SessionPage() {
                 </div>
                 <StatusBadge status={step.status} />
               </div>
+              {step.analysis && step.analysis.trim() && (
+                <StepAnalysis analysis={step.analysis} />
+              )}
               {step.output && step.output.trim() && (
                 <StepOutput output={step.output} status={step.status} />
               )}

@@ -10,12 +10,13 @@ import (
 )
 
 type stepResult struct {
-	name    string
-	passed  bool
-	skipped bool
-	warned  bool // failed but continue-on-error: true
-	aborted bool
-	output  string // captured stdout+stderr, capped at 10k chars
+	name     string
+	passed   bool
+	skipped  bool
+	warned   bool   // failed but continue-on-error: true
+	aborted  bool
+	output   string // captured stdout+stderr, capped at 10k chars
+	analysis string // AI failure analysis, if any
 }
 
 func loadEnv() {
@@ -199,7 +200,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 			r := stepResult{name: name, skipped: true}
 			results = append(results, r)
 			if live != nil {
-				_ = live.UpdateStep(name, "skipped", "")
+				_ = live.UpdateStep(name, "skipped", "", "")
 			}
 			continue
 		}
@@ -207,7 +208,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 		if step.Uses != "" && step.Run == "" {
 			fmt.Printf("\n  ─── Step %d: %s\n", i+1, name)
 			if live != nil {
-				_ = live.UpdateStep(name, "running", "")
+				_ = live.UpdateStep(name, "running", "", "")
 			}
 			handled, err := runAction(ctr, step)
 			if err != nil {
@@ -215,7 +216,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 				r := stepResult{name: name, passed: false}
 				results = append(results, r)
 				if live != nil {
-					_ = live.UpdateStep(name, "failed", err.Error())
+					_ = live.UpdateStep(name, "failed", err.Error(), "")
 				}
 				state.anyFailed = true
 				printSummary(results)
@@ -234,7 +235,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 						r := stepResult{name: name, aborted: true}
 						results = append(results, r)
 						if live != nil {
-							_ = live.UpdateStep(name, "aborted", "")
+							_ = live.UpdateStep(name, "aborted", "", "")
 						}
 						printSummary(results)
 						return results, nil
@@ -244,7 +245,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 						r := stepResult{name: name, skipped: true}
 						results = append(results, r)
 						if live != nil {
-							_ = live.UpdateStep(name, "skipped", "")
+							_ = live.UpdateStep(name, "skipped", "", "")
 						}
 						printStepResult(name, false, true)
 						skipped = true
@@ -264,7 +265,7 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 				r := stepResult{name: name, passed: true}
 				results = append(results, r)
 				if live != nil {
-					_ = live.UpdateStep(name, "passed", "")
+					_ = live.UpdateStep(name, "passed", "", "")
 				}
 				printStepResult(name, true, false)
 			}
@@ -272,13 +273,13 @@ func runJob(ctx context.Context, jobID string, job Job, evalCtx *evalContext, li
 		}
 
 		if live != nil {
-			_ = live.UpdateStep(name, "running", "")
+			_ = live.UpdateStep(name, "running", "", "")
 		}
 		result := runStep(ctr, i+1, name, step, evalCtx)
 		results = append(results, result)
 
 		if live != nil {
-			_ = live.UpdateStep(name, stepStatusStr(result), result.output)
+			_ = live.UpdateStep(name, stepStatusStr(result), result.output, result.analysis)
 		}
 
 		if !result.passed && !result.skipped && !result.warned {
@@ -348,12 +349,13 @@ func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalConte
 			// continue-on-error: true — log the failure but let the job continue.
 			if step.ContinueOnError {
 				fmt.Printf("  ⚠  WARN  %s (failed but continue-on-error is set)\n", name)
-				return stepResult{name: name, warned: true, output: capOutput(output)}
+				return stepResult{name: name, warned: true, output: capOutput(output), analysis: analyzeFailure(step.Run, output, exitCode)}
 			}
 
 			printStepResult(name, false, false)
 
-			if analysis := analyzeFailure(step.Run, output, exitCode); analysis != "" {
+			analysis := analyzeFailure(step.Run, output, exitCode)
+			if analysis != "" {
 				fmt.Println()
 				fmt.Println("  ┌─ AI Analysis ──────────────────────────────────")
 				for _, line := range strings.Split(analysis, "\n") {
@@ -379,7 +381,8 @@ func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalConte
 					} else {
 						fmt.Printf("  Step exited with code %d\n", exitCode)
 						printStepResult(name, false, false)
-						if analysis := analyzeFailure(step.Run, output, exitCode); analysis != "" {
+						analysis = analyzeFailure(step.Run, output, exitCode)
+						if analysis != "" {
 							fmt.Println()
 							fmt.Println("  ┌─ AI Analysis ──────────────────────────────────")
 							for _, line := range strings.Split(analysis, "\n") {
@@ -393,10 +396,10 @@ func runStep(ctr *Container, num int, name string, step Step, evalCtx *evalConte
 						fmt.Printf("\n  Shell error: %v\n", err)
 					}
 				case ActionAbort:
-					return stepResult{name: name, aborted: true, output: capOutput(output)}
+					return stepResult{name: name, aborted: true, output: capOutput(output), analysis: analysis}
 				case ActionSkip:
 					printStepResult(name, false, true)
-					return stepResult{name: name, skipped: true, output: capOutput(output)}
+					return stepResult{name: name, skipped: true, output: capOutput(output), analysis: analysis}
 				}
 			}
 		}

@@ -11,9 +11,10 @@ import (
 )
 
 type sharedStep struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-	Output string `json:"output,omitempty"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+	Output   string `json:"output,omitempty"`
+	Analysis string `json:"analysis,omitempty"`
 }
 
 type sharedSession struct {
@@ -78,11 +79,12 @@ func CreateLiveSession(wfName, platform string, stepNames []string) (*liveSessio
 
 // UpdateStep marks a specific step by name with a new status and optional output,
 // then PATCHes the session in Supabase.
-func (ls *liveSession) UpdateStep(name, status, output string) error {
+func (ls *liveSession) UpdateStep(name, status, output, analysis string) error {
 	for i := range ls.steps {
 		if ls.steps[i].Name == name {
 			ls.steps[i].Status = status
 			ls.steps[i].Output = output
+			ls.steps[i].Analysis = analysis
 			break
 		}
 	}
@@ -140,7 +142,7 @@ func ShareSession(wfName, platform string, results []stepResult) (string, error)
 	slug := randomSlug(8)
 	steps := make([]sharedStep, len(results))
 	for i, r := range results {
-		steps[i] = sharedStep{Name: r.name, Status: stepStatusStr(r), Output: r.output}
+		steps[i] = sharedStep{Name: r.name, Status: stepStatusStr(r), Output: r.output, Analysis: r.analysis}
 	}
 
 	session := sharedSession{

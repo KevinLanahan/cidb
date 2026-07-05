@@ -19,6 +19,8 @@ go build -o lokal .
 
 That's it. lokal will auto-discover your workflow file and start stepping through it.
 
+> **Don't have a workflow file yet?** Run `./lokal init` to scaffold one for GitHub Actions, GitLab CI, or CircleCI.
+
 ---
 
 ## Controls

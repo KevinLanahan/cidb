@@ -2,7 +2,7 @@
 set -e
 
 REPO="KevinLanahan/Lokal"
-VERSION="v0.1.1"
+VERSION="v0.1.2"
 INSTALL_DIR="/usr/local/bin"
 BIN_NAME="lokal"
 

@@ -1,49 +1,44 @@
 package runner
 
 import (
-	"context"
-	"fmt"
+	"bytes"
+	"encoding/json"
+	"net/http"
 	"os"
 	"strings"
-
-	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
 )
 
+const analyzeEndpoint = "https://lokal-kappa.vercel.app/api/analyze"
+
 func analyzeFailure(command string, output string, exitCode int) string {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return ""
+	// Allow override via env for self-hosters.
+	endpoint := os.Getenv("LOKAL_ANALYZE_URL")
+	if endpoint == "" {
+		endpoint = analyzeEndpoint
 	}
 
-	client := anthropic.NewClient(option.WithAPIKey(apiKey))
-
-	prompt := fmt.Sprintf(`A CI pipeline step failed. Explain in 2-3 sentences why it failed and how to fix it. Be specific and practical — no fluff.
-
-Command:
-%s
-
-Output:
-%s
-
-Exit code: %d`, command, output, exitCode)
-
-	msg, err := client.Messages.New(context.Background(), anthropic.MessageNewParams{
-		Model:     "claude-haiku-4-5",
-		MaxTokens: 300,
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
-		},
+	body, _ := json.Marshal(map[string]any{
+		"command":  command,
+		"output":   output,
+		"exitCode": exitCode,
 	})
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return ""
 	}
+	defer resp.Body.Close()
 
-	var sb strings.Builder
-	for _, block := range msg.Content {
-		if block.Type == "text" {
-			sb.WriteString(block.Text)
-		}
+	if resp.StatusCode != 200 {
+		return ""
 	}
-	return strings.TrimSpace(sb.String())
+
+	var result struct {
+		Analysis string `json:"analysis"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(result.Analysis)
 }
